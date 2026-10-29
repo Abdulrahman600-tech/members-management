@@ -1,0 +1,257 @@
+
+@import "tailwindcss";
+
+:root {
+  --background: #f3f6fb;
+  --foreground: #1e293b;
+
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+
+  --color-success: #16a34a;
+  --color-success-dark: #166534;
+  --color-success-light: #dcfce7;
+
+  --color-danger: #dc2626;
+  --color-danger-dark: #b91c1c;
+  --color-danger-light: #fee2e2;
+
+  --color-warning: #ea580c;
+  --color-warning-light: #ffedd5;
+
+  --color-income: #15803d;
+  --color-expense: #c2410c;
+
+  --color-border: #e2e8f0;
+  --color-card: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1 {
+  color: #173b70;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+h2 {
+  color: #234b7a;
+  font-size: 22px;
+  font-weight: 700;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #dbeafe;
+}
+
+/* حقول الإدخال */
+input,
+select,
+textarea {
+  max-width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  color: #1e293b;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 15px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #93c5fd;
+  border-color: #2563eb;
+}
+
+/* الأزرار الافتراضية: أزرق */
+button {
+  padding: 11px 16px;
+  color: #ffffff;
+  background: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+button:hover {
+  background: var(--color-primary-hover);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* النماذج */
+form {
+  padding: 16px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+  gap: 12px;
+}
+
+/* رأس لوحة الإدارة */
+main > header {
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+/* الجداول */
+table {
+  width: 100%;
+  background: #ffffff;
+  border-collapse: collapse;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+thead {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+th {
+  padding: 13px;
+  text-align: start;
+  font-weight: 700;
+}
+
+td {
+  padding: 10px;
+  color: #334155;
+  background: #ffffff;
+  border-bottom: 1px solid var(--color-border);
+}
+
+tbody tr:hover td {
+  background: #f8fafc;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* تلوين أزرار الدفع عند إضافة هذه الأصناف في page.tsx */
+button.payment-paid {
+  background: var(--color-danger);
+}
+
+button.payment-paid:hover {
+  background: #b91c1c;
+}
+
+button.payment-unpaid {
+  background: var(--color-success);
+}
+
+button.payment-unpaid:hover {
+  background: #15803d;
+}
+
+/* ألوان الإيرادات والمصروفات */
+button.income-button {
+  background: var(--color-income);
+}
+
+button.income-button:hover {
+  background: #166534;
+}
+
+button.expense-button {
+  background: var(--color-warning);
+}
+
+button.expense-button:hover {
+  background: #c2410c;
+}
+
+/* زر إضافة عضو */
+button.add-member-button {
+  background: #7c3aed;
+}
+
+button.add-member-button:hover {
+  background: #6d28d9;
+}
+
+/* رسائل التنبيه */
+[role="status"] {
+  padding: 12px;
+  color: #1e40af;
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+/* الروابط */
+a {
+  color: #2563eb;
+}
+
+a:hover {
+  color: #1d4ed8;
+}
+
+/* عرض مناسب للهواتف */
+@media (max-width: 640px) {
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 19px;
+  }
+
+  main {
+    padding: 14px !important;
+  }
+
+  main > header {
+    padding: 14px;
+  }
+
+  form {
+    padding: 12px;
+  }
+
+  button {
+    padding: 10px 12px;
+  }
+}
