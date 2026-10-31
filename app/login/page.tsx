@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const router = useRouter();
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -18,6 +19,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // تسجيل الدخول
       const { error: loginError } =
         await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -25,24 +27,41 @@ export default function LoginPage() {
         });
 
       if (loginError) {
-        setError("فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.");
-        return;
-      }
-
-      const { data: roleData, error: roleError } =
-        await supabase.rpc("current_user_role");
-
-      if (roleError || roleData !== "admin") {
-        await supabase.auth.signOut();
         setError(
-          "هذا الحساب ليس لديه صلاحية المدير. تحقق من إعدادات الصلاحيات."
+          "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور."
         );
         return;
       }
 
-      router.replace("/");
-      router.refresh();
-    } catch {
+      // التحقق من صلاحية الحساب
+      const { data: roleData, error: roleError } =
+        await supabase.rpc("current_user_role");
+
+      if (roleError) {
+        await supabase.auth.signOut();
+        setError("تعذر التحقق من صلاحيات الحساب. حاول مرة أخرى.");
+        return;
+      }
+
+      // توجيه المدير إلى لوحة الإدارة
+      if (roleData === "admin") {
+        router.replace("/");
+        router.refresh();
+        return;
+      }
+
+      // توجيه العضو إلى صفحته الخاصة
+      if (roleData === "member") {
+        router.replace("/member");
+        router.refresh();
+        return;
+      }
+
+      // رفض أي صلاحية غير معروفة
+      await supabase.auth.signOut();
+      setError("هذا الحساب لا يملك صلاحية دخول معتمدة.");
+    } catch (err) {
+      console.error("Login error:", err);
       setError("حدث خطأ أثناء تسجيل الدخول. حاول مرة أخرى.");
     } finally {
       setLoading(false);
@@ -64,6 +83,7 @@ export default function LoginPage() {
 
       <form onSubmit={handleLogin}>
         <label htmlFor="email">البريد الإلكتروني</label>
+
         <input
           id="email"
           type="email"
@@ -81,6 +101,7 @@ export default function LoginPage() {
         />
 
         <label htmlFor="password">كلمة المرور</label>
+
         <input
           id="password"
           type="password"
@@ -116,4 +137,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
