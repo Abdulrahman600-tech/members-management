@@ -1,6 +1,7 @@
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 const ADMIN_UID = "56ac1884-fcdb-469a-9531-294b2364e71f";
 
@@ -11,6 +12,8 @@ const supabaseAuth = createClient(
 
 export async function POST(request: Request) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+
     // التحقق من هوية المدير
     const authorization = request.headers.get("Authorization");
 
@@ -22,6 +25,7 @@ export async function POST(request: Request) {
     }
 
     const token = authorization.slice(7);
+
     const { data: authData, error: authError } =
       await supabaseAuth.auth.getUser(token);
 
@@ -106,7 +110,11 @@ export async function POST(request: Request) {
       });
 
     if (roleError) {
-      await supabaseAdmin.from("members").delete().eq("id", member.id);
+      await supabaseAdmin
+        .from("members")
+        .delete()
+        .eq("id", member.id);
+
       await supabaseAdmin.auth.admin.deleteUser(userId);
       throw roleError;
     }
@@ -115,6 +123,7 @@ export async function POST(request: Request) {
       success: true,
       message: "تم إرسال دعوة العضو بنجاح",
     });
+
   } catch (error) {
     console.error("Invite member error:", error);
 
