@@ -252,49 +252,85 @@ export default function HomePage() {
   }, [authChecking, month, loadPayments, loadTransactions]);
 
   async function addMember(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage("");
+  event.preventDefault();
+  setMessage("");
 
-    if (!name.trim() || !email.trim()) {
-      setMessage(
-        ar
-          ? "أدخل اسم العضو والبريد الإلكتروني."
-          : "Bitte Name und E-Mail eingeben."
+  if (!name.trim() || !email.trim()) {
+    setMessage(
+      ar
+        ? "أدخل اسم العضو والبريد الإلكتروني."
+        : "Bitte Name und E-Mail eingeben."
+    );
+    return;
+  }
+
+  const fee = Number(monthlyFee);
+
+  if (!Number.isFinite(fee) || fee < 0) {
+    setMessage(
+      ar ? "قيمة الاشتراك غير صحيحة." : "Ungültiger Mitgliedsbeitrag."
+    );
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    // الحصول على جلسة المدير
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    if (sessionError || !sessionData.session) {
+      throw new Error(
+        ar ? "يرجى تسجيل الدخول أولاً." : "Bitte zuerst anmelden."
       );
-      return;
     }
 
-    const fee = Number(monthlyFee);
-    if (!Number.isFinite(fee) || fee < 0) {
-      setMessage(
-        ar ? "قيمة الاشتراك غير صحيحة." : "Ungültiger Mitgliedsbeitrag."
-      );
-      return;
-    }
-
-    setLoading(true);
-    const { error } = await supabase.from("members").insert({
-      name: name.trim(),
-      email: email.trim(),
-      monthly_fee: fee,
+    // إرسال بيانات العضو إلى الخادم لإرسال الدعوة
+    const response = await fetch("/api/admin/invite-member", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
+      body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim(),
+        monthlyFee: fee,
+      }),
     });
-    setLoading(false);
 
-    if (error) {
-      setMessage(
-        `${ar ? "تعذرت إضافة العضو" : "Mitglied konnte nicht hinzugefügt werden"}: ${error.message}`
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error ||
+          (ar ? "تعذرت إضافة العضو." : "Mitglied konnte nicht hinzugefügt werden.")
       );
-      return;
     }
 
     setName("");
     setEmail("");
     setMonthlyFee("250");
+
     setMessage(
-      ar ? "تمت إضافة العضو بنجاح." : "Mitglied erfolgreich hinzugefügt."
+      ar
+        ? "تمت إضافة العضو وإرسال دعوة إلى بريده الإلكتروني."
+        : "Mitglied hinzugefügt und Einladung per E-Mail gesendet."
     );
+
     await loadMembers();
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
+    setMessage(
+      `${ar ? "تعذرت إضافة العضو" : "Mitglied konnte nicht hinzugefügt werden"}: ${errorMessage}`
+    );
+  } finally {
+    setLoading(false);
   }
+}
 
   async function togglePayment(member: Member) {
     setMessage("");
@@ -949,4 +985,4 @@ function SummaryCard({
       <strong style={{ fontSize: 22 }}>{value}</strong>
     </div>
   );
-}
+} 
