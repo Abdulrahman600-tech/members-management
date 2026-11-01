@@ -1,6 +1,3 @@
-
-
-```tsx
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
@@ -16,7 +13,7 @@ export async function POST(request: Request) {
   try {
     const authorization = request.headers.get("Authorization");
 
-    if (!authorization?.startsWith("Bearer ")) {
+    if (!authorization || !authorization.startsWith("Bearer ")) {
       return NextResponse.json(
         { error: "غير مصرح بالدخول" },
         { status: 401 }
@@ -45,7 +42,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const paymentMonth = `${month}-01`;
+    const paymentMonth = month + "-01";
     const supabaseAdmin = getSupabaseAdmin();
 
     // جلب الأعضاء النشطين فقط
@@ -55,7 +52,9 @@ export async function POST(request: Request) {
         .select("id, name, email, monthly_fee, is_active")
         .eq("is_active", true);
 
-    if (membersError) throw membersError;
+    if (membersError) {
+      throw membersError;
+    }
 
     // جلب الاشتراكات الموجودة لهذا الشهر
     const { data: existingPayments, error: paymentsError } =
@@ -64,7 +63,9 @@ export async function POST(request: Request) {
         .select("member_id")
         .eq("payment_month", paymentMonth);
 
-    if (paymentsError) throw paymentsError;
+    if (paymentsError) {
+      throw paymentsError;
+    }
 
     const existingIds = new Set(
       (existingPayments || [])
@@ -99,12 +100,15 @@ export async function POST(request: Request) {
       .from("monthly_payments")
       .insert(newPayments);
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      throw insertError;
+    }
 
     return NextResponse.json({
       success: true,
       created: newPayments.length,
-      message: `تم إنشاء ${newPayments.length} اشتراكًا بنجاح`,
+      message:
+        "تم إنشاء " + newPayments.length + " اشتراكًا بنجاح",
     });
   } catch (error) {
     console.error("Generate monthly payments error:", error);
@@ -115,4 +119,3 @@ export async function POST(request: Request) {
     );
   }
 }
-```

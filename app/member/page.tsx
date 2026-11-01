@@ -1,6 +1,6 @@
+﻿
 
 
-```tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -48,7 +48,7 @@ export default function MemberPage() {
           await supabase.rpc("current_user_role");
 
         if (roleError || role !== "member") {
-          setError("هذا الحساب ليس حساب عضو عادي.");
+          setError("Ù‡Ø°Ø§ Ø§Ù„Ø­Ø³Ø§Ø¨ Ù„ÙŠØ³ Ø­Ø³Ø§Ø¨ Ø¹Ø¶Ùˆ Ø¹Ø§Ø¯ÙŠ.");
           await supabase.auth.signOut();
           router.replace("/login");
           return;
@@ -65,7 +65,7 @@ export default function MemberPage() {
 
         if (!memberData.is_active) {
           setError(
-            "حسابك موقوف حالياً. يرجى التواصل مع الإدارة."
+            "Ø­Ø³Ø§Ø¨Ùƒ Ù…ÙˆÙ‚ÙˆÙ Ø­Ø§Ù„ÙŠØ§Ù‹. ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©."
           );
 
           await supabase.auth.signOut();
@@ -89,7 +89,7 @@ export default function MemberPage() {
         console.error("Member page error:", err);
 
         setError(
-          "تعذر تحميل بيانات العضو. يرجى المحاولة مرة أخرى."
+          "ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¹Ø¶Ùˆ. ÙŠØ±Ø¬Ù‰ Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø© Ù…Ø±Ø© Ø£Ø®Ø±Ù‰."
         );
       } finally {
         setLoading(false);
@@ -108,7 +108,7 @@ export default function MemberPage() {
   if (loading) {
     return (
       <main dir="rtl" style={{ padding: 30 }}>
-        جارٍ تحميل بياناتك...
+        Ø¬Ø§Ø±Ù ØªØ­Ù…ÙŠÙ„ Ø¨ÙŠØ§Ù†Ø§ØªÙƒ...
       </main>
     );
   }
@@ -123,7 +123,7 @@ export default function MemberPage() {
         fontFamily: "Arial",
       }}
     >
-      <h1>صفحة العضو</h1>
+      <h1>ØµÙØ­Ø© Ø§Ù„Ø¹Ø¶Ùˆ</h1>
 
       {error && (
         <p style={{ color: "red" }}>{error}</p>
@@ -139,10 +139,10 @@ export default function MemberPage() {
               marginBottom: 20,
             }}
           >
-            <h2>بياناتي</h2>
-            <p>الاسم: {member.name}</p>
-            <p>البريد الإلكتروني: {member.email}</p>
-            <p>الاشتراك الشهري: {member.monthly_fee} €</p>
+            <h2>Ø¨ÙŠØ§Ù†Ø§ØªÙŠ</h2>
+            <p>Ø§Ù„Ø§Ø³Ù…: {member.name}</p>
+            <p>Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ: {member.email}</p>
+            <p>Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø´Ù‡Ø±ÙŠ: {member.monthly_fee} â‚¬</p>
           </section>
 
           <section
@@ -152,10 +152,10 @@ export default function MemberPage() {
               padding: 20,
             }}
           >
-            <h2>اشتراكاتي الشهرية</h2>
+            <h2>Ø§Ø´ØªØ±Ø§ÙƒØ§ØªÙŠ Ø§Ù„Ø´Ù‡Ø±ÙŠØ©</h2>
 
             {payments.length === 0 ? (
-              <p>لا توجد دفعات مسجلة حتى الآن.</p>
+              <p>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¯ÙØ¹Ø§Øª Ù…Ø³Ø¬Ù„Ø© Ø­ØªÙ‰ Ø§Ù„Ø¢Ù†.</p>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table
@@ -167,9 +167,9 @@ export default function MemberPage() {
                 >
                   <thead>
                     <tr>
-                      <th style={{ padding: 10 }}>الشهر</th>
-                      <th style={{ padding: 10 }}>المبلغ</th>
-                      <th style={{ padding: 10 }}>الحالة</th>
+                      <th style={{ padding: 10 }}>Ø§Ù„Ø´Ù‡Ø±</th>
+                      <th style={{ padding: 10 }}>Ø§Ù„Ù…Ø¨Ù„Øº</th>
+                      <th style={{ padding: 10 }}>Ø§Ù„Ø­Ø§Ù„Ø©</th>
                     </tr>
                   </thead>
 
@@ -181,13 +181,13 @@ export default function MemberPage() {
                         </td>
 
                         <td style={{ padding: 10 }}>
-                          {payment.amount} €
+                          {payment.amount} â‚¬
                         </td>
 
                         <td style={{ padding: 10 }}>
                           {payment.is_paid
-                            ? "تم تأكيد الدفع"
-                            : "بانتظار الدفع"}
+                            ? "ØªÙ… ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø¯ÙØ¹"
+                            : "Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„Ø¯ÙØ¹"}
                         </td>
                       </tr>
                     ))}
@@ -205,11 +205,11 @@ export default function MemberPage() {
               cursor: "pointer",
             }}
           >
-            تسجيل الخروج
+            ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬
           </button>
         </>
       )}
     </main>
   );
 }
-```
+
