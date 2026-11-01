@@ -1,4 +1,6 @@
 
+
+```tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,6 +12,7 @@ type Member = {
   name: string;
   email: string;
   monthly_fee: number;
+  is_active: boolean;
 };
 
 type Payment = {
@@ -54,11 +57,21 @@ export default function MemberPage() {
         const { data: memberData, error: memberError } =
           await supabase
             .from("members")
-            .select("id, name, email, monthly_fee")
+            .select("id, name, email, monthly_fee, is_active")
             .eq("auth_user_id", user.id)
             .single();
 
         if (memberError) throw memberError;
+
+        if (!memberData.is_active) {
+          setError(
+            "حسابك موقوف حالياً. يرجى التواصل مع الإدارة."
+          );
+
+          await supabase.auth.signOut();
+          router.replace("/login");
+          return;
+        }
 
         setMember(memberData);
 
@@ -74,6 +87,7 @@ export default function MemberPage() {
         setPayments(paymentData || []);
       } catch (err) {
         console.error("Member page error:", err);
+
         setError(
           "تعذر تحميل بيانات العضو. يرجى المحاولة مرة أخرى."
         );
@@ -92,7 +106,11 @@ export default function MemberPage() {
   }
 
   if (loading) {
-    return <main dir="rtl" style={{ padding: 30 }}>جارٍ تحميل بياناتك...</main>;
+    return (
+      <main dir="rtl" style={{ padding: 30 }}>
+        جارٍ تحميل بياناتك...
+      </main>
+    );
   }
 
   return (
@@ -154,15 +172,18 @@ export default function MemberPage() {
                       <th style={{ padding: 10 }}>الحالة</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {payments.map((payment) => (
                       <tr key={payment.id}>
                         <td style={{ padding: 10 }}>
                           {payment.payment_month}
                         </td>
+
                         <td style={{ padding: 10 }}>
                           {payment.amount} €
                         </td>
+
                         <td style={{ padding: 10 }}>
                           {payment.is_paid
                             ? "تم تأكيد الدفع"
@@ -191,3 +212,4 @@ export default function MemberPage() {
     </main>
   );
 }
+```

@@ -1,3 +1,6 @@
+
+
+```tsx
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
@@ -45,13 +48,16 @@ export async function POST(request: Request) {
     const paymentMonth = `${month}-01`;
     const supabaseAdmin = getSupabaseAdmin();
 
+    // جلب الأعضاء النشطين فقط
     const { data: members, error: membersError } =
       await supabaseAdmin
         .from("members")
-        .select("id, monthly_fee");
+        .select("id, name, email, monthly_fee, is_active")
+        .eq("is_active", true);
 
     if (membersError) throw membersError;
 
+    // جلب الاشتراكات الموجودة لهذا الشهر
     const { data: existingPayments, error: paymentsError } =
       await supabaseAdmin
         .from("monthly_payments")
@@ -61,15 +67,21 @@ export async function POST(request: Request) {
     if (paymentsError) throw paymentsError;
 
     const existingIds = new Set(
-      (existingPayments || []).map((payment) =>
-        Number(payment.member_id)
-      )
+      (existingPayments || [])
+        .map((payment) => payment.member_id)
+        .filter((id) => id !== null)
+        .map((id) => Number(id))
     );
 
+    // إنشاء اشتراكات جديدة للأعضاء النشطين فقط
     const newPayments = (members || [])
-      .filter((member) => !existingIds.has(Number(member.id)))
+      .filter(
+        (member) => !existingIds.has(Number(member.id))
+      )
       .map((member) => ({
         member_id: member.id,
+        member_name: member.name,
+        member_email: member.email,
         payment_month: paymentMonth,
         amount: Number(member.monthly_fee),
         is_paid: false,
@@ -79,7 +91,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         created: 0,
-        message: "اشتراكات هذا الشهر موجودة بالفعل",
+        message: "لا توجد اشتراكات جديدة لإنشائها",
       });
     }
 
@@ -103,3 +115,4 @@ export async function POST(request: Request) {
     );
   }
 }
+```

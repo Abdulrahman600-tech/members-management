@@ -13,11 +13,12 @@ type Member = {
   name: string;
   email: string;
   monthlyFee: number;
+  is_active: boolean;
 };
 
 type Payment = {
   id: number;
-  member_id: number;
+  member_id: number | null;
   payment_month: string;
   amount: number;
   is_paid: boolean;
@@ -155,7 +156,7 @@ export default function HomePage() {
   const loadMembers = useCallback(async () => {
     const { data, error } = await supabase
       .from("members")
-      .select("id, name, email, monthly_fee")
+      .select("id, name, email, monthly_fee, is_active")
       .order("id", { ascending: true });
 
     if (error) {
@@ -171,6 +172,7 @@ export default function HomePage() {
         name: row.name ?? "",
         email: row.email ?? "",
         monthlyFee: Number(row.monthly_fee ?? 250),
+        is_active: Boolean(row.is_active),
       }))
     );
   }, [ar]);
@@ -193,7 +195,7 @@ export default function HomePage() {
     setPayments(
       (data ?? []).map((row) => ({
         id: Number(row.id),
-        member_id: Number(row.member_id),
+        member_id: row.member_id === null ? null : Number(row.member_id),
         payment_month: row.payment_month,
         amount: Number(row.amount ?? 0),
         is_paid: Boolean(row.is_paid),
@@ -396,55 +398,63 @@ async function generateMonthlyPayments() {
 }
 
   async function togglePayment(member: Member) {
-    setMessage("");
-    const payment = payments.find((p) => p.member_id === member.id);
-    const newPaidState = !payment?.is_paid;
+    if (!member.is_active) {
+  alert(ar ? "هذا العضو موقوف." : "Dieses Mitglied ist deaktiviert.");
+  return;
+}
+  setMessage("");
+  const payment = payments.find((p) => p.member_id === member.id);
+  const newPaidState = !payment?.is_paid;
 
-    setLoading(true);
-    let error;
+  setLoading(true);
+  let error;
 
-    if (payment) {
-      const result = await supabase
-        .from("monthly_payments")
-        .update({
-          is_paid: newPaidState,
-          amount: member.monthlyFee,
-          paid_at: newPaidState ? new Date().toISOString() : null,
-        })
-        .eq("id", payment.id);
-      error = result.error;
-    } else {
-      const result = await supabase.from("monthly_payments").insert({
-        member_id: member.id,
-        payment_month: monthDate(month),
-        amount: member.monthlyFee,
+  if (payment) {
+    const result = await supabase
+      .from("monthly_payments")
+      .update({
         is_paid: newPaidState,
+        amount: member.monthlyFee,
         paid_at: newPaidState ? new Date().toISOString() : null,
-      });
-      error = result.error;
-    }
+      })
+      .eq("id", payment.id);
 
-    setLoading(false);
+    error = result.error;
+  } else {
+    const result = await supabase.from("monthly_payments").insert({
+      member_id: member.id,
+      member_name: member.name,
+      member_email: member.email,
+      payment_month: monthDate(month),
+      amount: member.monthlyFee,
+      is_paid: newPaidState,
+      paid_at: newPaidState ? new Date().toISOString() : null,
+    });
 
-    if (error) {
-      setMessage(
-        `${ar ? "تعذر تحديث الدفعة" : "Zahlung konnte nicht aktualisiert werden"}: ${error.message}`
-      );
-      return;
-    }
-
-    setMessage(
-      newPaidState
-        ? ar
-          ? "تم تأكيد الدفع."
-          : "Zahlung bestätigt."
-        : ar
-          ? "تم إلغاء تأكيد الدفع."
-          : "Zahlungsbestätigung zurückgenommen."
-    );
-
-    await loadPayments();
+    error = result.error;
   }
+
+  setLoading(false);
+
+  if (error) {
+    setMessage(
+      `${ar ? "تعذر تحديث الدفعة" : "Zahlung konnte nicht aktualisiert werden"}: ${error.message}`
+    );
+    return;
+  }
+
+  setMessage(
+    newPaidState
+      ? ar
+        ? "تم تأكيد الدفع."
+        : "Zahlung bestätigt."
+      : ar
+        ? "تم إلغاء تأكيد الدفع."
+        : "Zahlungsbestätigung zurückgenommen."
+  );
+
+  await loadPayments();
+}
 
   async function addTransaction(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -517,6 +527,76 @@ async function generateMonthlyPayments() {
     setMessage(ar ? "تم حذف الحركة." : "Buchung gelöscht.");
     await loadTransactions();
   }
+  async function setMemberStatus(member: Member, isActive: boolean) {
+    const actionText = isActive
+      ? "إعادة تفعيل العضو"
+      : "إيقاف العضو";
+
+    if (
+      !window.confirm(
+        ar
+          ? `هل تريد ${actionText} ${member.name}؟`
+          : `Möchten Sie ${member.name} wirklich ${
+              isActive ? "reaktivieren" : "deaktivieren"
+            }?`
+      )
+    ) {
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session) {
+        throw new Error(
+          ar ? "يرجى تسجيل الدخول أولاً." : "Bitte zuerst anmelden."
+        );
+      }
+
+      const response = await fetch("/api/admin/set-member-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+        body: JSON.stringify({
+          memberId: member.id,
+          isActive,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "حدث خطأ.");
+      }
+
+      setMessage(
+        ar
+          ? isActive
+            ? "تمت إعادة تفعيل العضو."
+            : "تم إيقاف العضو."
+          : isActive
+            ? "Mitglied reaktiviert."
+            : "Mitglied deaktiviert."
+      );
+
+      await loadMembers();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "حدث خطأ غير متوقع."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   async function logout() {
     await supabase.auth.signOut();
@@ -810,6 +890,7 @@ async function generateMonthlyPayments() {
                 <th style={cellStyle}>{ar ? "الاشتراك" : "Beitrag"}</th>
                 <th style={cellStyle}>{ar ? "الحالة" : "Status"}</th>
                 <th style={cellStyle}>{ar ? "الإجراء" : "Aktion"}</th>
+<th style={cellStyle}>{ar ? "حالة العضوية" : "Mitgliedsstatus"}</th>
               </tr>
             </thead>
             <tbody>
@@ -843,7 +924,7 @@ async function generateMonthlyPayments() {
                           ...buttonStyle,
                           background: isPaid ? colors.red : colors.green,
                         }}
-                        disabled={loading}
+                        disabled={loading || !member.is_active}
                         onClick={() => void togglePayment(member)}
                       >
                         {isPaid
@@ -855,13 +936,35 @@ async function generateMonthlyPayments() {
                             : "Zahlung bestätigen"}
                       </button>
                     </td>
+                                        <td style={cellStyle}>
+                      <button
+                        style={{
+                          ...buttonStyle,
+                          background: member.is_active
+                            ? colors.red
+                            : colors.green,
+                        }}
+                        disabled={loading}
+                        onClick={() =>
+                          void setMemberStatus(member, !member.is_active)
+                        }
+                      >
+                        {member.is_active
+                          ? ar
+                            ? "إيقاف العضو"
+                            : "Deaktivieren"
+                          : ar
+                            ? "إعادة التفعيل"
+                            : "Reaktivieren"}
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
 
               {members.length === 0 && (
                 <tr>
-                  <td style={cellStyle} colSpan={5}>
+                  <td style={cellStyle} colSpan={6}>
                     {ar
                       ? "لا يوجد أعضاء حتى الآن."
                       : "Noch keine Mitglieder vorhanden."}
@@ -1056,4 +1159,4 @@ function SummaryCard({
       <strong style={{ fontSize: 22 }}>{value}</strong>
     </div>
   );
-} 
+}  
