@@ -331,6 +331,69 @@ export default function HomePage() {
     setLoading(false);
   }
 }
+async function generateMonthlyPayments() {
+  if (!month) {
+    setMessage(ar ? "اختر الشهر أولاً." : "Bitte zuerst einen Monat auswählen.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    ar
+      ? `هل تريد إنشاء اشتراكات شهر ${month} لجميع الأعضاء؟`
+      : `Monatsbeiträge für ${month} für alle Mitglieder erstellen?`
+  );
+
+  if (!confirmed) return;
+
+  setLoading(true);
+  setMessage("");
+
+  try {
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    if (sessionError || !sessionData.session) {
+      throw new Error(
+        ar ? "يرجى تسجيل الدخول أولاً." : "Bitte zuerst anmelden."
+      );
+    }
+
+    const response = await fetch(
+      "/api/admin/generate-monthly-payments",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+        body: JSON.stringify({ month }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "حدث خطأ");
+    }
+
+    setMessage(
+      ar
+        ? `تم إنشاء ${result.created} اشتراكًا للشهر ${month}.`
+        : `${result.created} Beiträge für ${month} erstellt.`
+    );
+
+    await loadPayments();
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
+    setMessage(
+      `${ar ? "تعذر إنشاء الاشتراكات" : "Beiträge konnten nicht erstellt werden"}: ${errorMessage}`
+    );
+  } finally {
+    setLoading(false);
+  }
+}
 
   async function togglePayment(member: Member) {
     setMessage("");
@@ -730,6 +793,14 @@ export default function HomePage() {
         }}
       >
         <h2>{ar ? "الاشتراكات الشهرية" : "Monatliche Beiträge"}</h2>
+        <button
+  style={{ ...buttonStyle, background: colors.purple, marginBottom: 16 }}
+  type="button"
+  disabled={loading || !month}
+  onClick={() => void generateMonthlyPayments()}
+>
+  {ar ? `إنشاء اشتراكات شهر ${month}` : `Beiträge für ${month} erstellen`}
+</button>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
