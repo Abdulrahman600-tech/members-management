@@ -1,7 +1,4 @@
-﻿
-
-
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -23,6 +20,21 @@ type Payment = {
   paid_at: string | null;
 };
 
+function euro(value: number) {
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+  }).format(value);
+}
+
+function formatMonth(value: string) {
+  const date = new Date(value + "T00:00:00");
+  return new Intl.DateTimeFormat("ar", {
+    year: "numeric",
+    month: "long",
+  }).format(date);
+}
+
 export default function MemberPage() {
   const router = useRouter();
 
@@ -32,6 +44,8 @@ export default function MemberPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let active = true;
+
     async function loadMemberData() {
       try {
         const {
@@ -48,7 +62,9 @@ export default function MemberPage() {
           await supabase.rpc("current_user_role");
 
         if (roleError || role !== "member") {
-          setError("Ù‡Ø°Ø§ Ø§Ù„Ø­Ø³Ø§Ø¨ Ù„ÙŠØ³ Ø­Ø³Ø§Ø¨ Ø¹Ø¶Ùˆ Ø¹Ø§Ø¯ÙŠ.");
+          if (active) {
+            setError("هذا الحساب ليس حساب عضو عادي.");
+          }
           await supabase.auth.signOut();
           router.replace("/login");
           return;
@@ -59,21 +75,37 @@ export default function MemberPage() {
             .from("members")
             .select("id, name, email, monthly_fee, is_active")
             .eq("auth_user_id", user.id)
-            .single();
+            .maybeSingle();
 
-        if (memberError) throw memberError;
+        if (memberError) {
+          throw memberError;
+        }
 
-        if (!memberData.is_active) {
-          setError(
-            "Ø­Ø³Ø§Ø¨Ùƒ Ù…ÙˆÙ‚ÙˆÙ Ø­Ø§Ù„ÙŠØ§Ù‹. ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©."
-          );
-
+        if (!memberData) {
+          if (active) {
+            setError(
+              "تعذر العثور على بيانات العضوية أو أن الحساب غير نشط. يرجى التواصل مع الإدارة."
+            );
+          }
           await supabase.auth.signOut();
           router.replace("/login");
           return;
         }
 
-        setMember(memberData);
+        if (!memberData.is_active) {
+          if (active) {
+            setError(
+              "حسابك موقوف حاليًا. يرجى التواصل مع الإدارة."
+            );
+          }
+          await supabase.auth.signOut();
+          router.replace("/login");
+          return;
+        }
+
+        if (active) {
+          setMember(memberData);
+        }
 
         const { data: paymentData, error: paymentError } =
           await supabase
@@ -82,21 +114,33 @@ export default function MemberPage() {
             .eq("member_id", memberData.id)
             .order("payment_month", { ascending: false });
 
-        if (paymentError) throw paymentError;
+        if (paymentError) {
+          throw paymentError;
+        }
 
-        setPayments(paymentData || []);
+        if (active) {
+          setPayments(paymentData || []);
+        }
       } catch (err) {
         console.error("Member page error:", err);
 
-        setError(
-          "ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¹Ø¶Ùˆ. ÙŠØ±Ø¬Ù‰ Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø© Ù…Ø±Ø© Ø£Ø®Ø±Ù‰."
-        );
+        if (active) {
+          setError(
+            "تعذر تحميل بيانات العضو. يرجى المحاولة مرة أخرى."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
-    loadMemberData();
+    void loadMemberData();
+
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   async function logout() {
@@ -107,8 +151,8 @@ export default function MemberPage() {
 
   if (loading) {
     return (
-      <main dir="rtl" style={{ padding: 30 }}>
-        Ø¬Ø§Ø±Ù ØªØ­Ù…ÙŠÙ„ Ø¨ÙŠØ§Ù†Ø§ØªÙƒ...
+      <main dir="rtl" style={{ padding: 30, textAlign: "center" }}>
+        جارٍ تحميل بياناتك...
       </main>
     );
   }
@@ -116,17 +160,31 @@ export default function MemberPage() {
   return (
     <main
       dir="rtl"
+      lang="ar"
       style={{
         maxWidth: 750,
         margin: "30px auto",
         padding: 20,
-        fontFamily: "Arial",
+        fontFamily: "Arial, sans-serif",
+        color: "#202124",
+        background: "#ffffff",
+        minHeight: "80vh",
       }}
     >
-      <h1>ØµÙØ­Ø© Ø§Ù„Ø¹Ø¶Ùˆ</h1>
+      <h1>صفحة العضو</h1>
 
       {error && (
-        <p style={{ color: "red" }}>{error}</p>
+        <p
+          role="alert"
+          style={{
+            color: "#991b1b",
+            background: "#fee2e2",
+            padding: 12,
+            borderRadius: 8,
+          }}
+        >
+          {error}
+        </p>
       )}
 
       {member && (
@@ -139,10 +197,10 @@ export default function MemberPage() {
               marginBottom: 20,
             }}
           >
-            <h2>Ø¨ÙŠØ§Ù†Ø§ØªÙŠ</h2>
-            <p>Ø§Ù„Ø§Ø³Ù…: {member.name}</p>
-            <p>Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ: {member.email}</p>
-            <p>Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø´Ù‡Ø±ÙŠ: {member.monthly_fee} â‚¬</p>
+            <h2>بياناتي</h2>
+            <p>الاسم: {member.name}</p>
+            <p>البريد الإلكتروني: {member.email}</p>
+            <p>الاشتراك الشهري: {euro(Number(member.monthly_fee))}</p>
           </section>
 
           <section
@@ -152,10 +210,10 @@ export default function MemberPage() {
               padding: 20,
             }}
           >
-            <h2>Ø§Ø´ØªØ±Ø§ÙƒØ§ØªÙŠ Ø§Ù„Ø´Ù‡Ø±ÙŠØ©</h2>
+            <h2>اشتراكاتي الشهرية</h2>
 
             {payments.length === 0 ? (
-              <p>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¯ÙØ¹Ø§Øª Ù…Ø³Ø¬Ù„Ø© Ø­ØªÙ‰ Ø§Ù„Ø¢Ù†.</p>
+              <p>لا توجد دفعات مسجلة حتى الآن.</p>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table
@@ -167,9 +225,9 @@ export default function MemberPage() {
                 >
                   <thead>
                     <tr>
-                      <th style={{ padding: 10 }}>Ø§Ù„Ø´Ù‡Ø±</th>
-                      <th style={{ padding: 10 }}>Ø§Ù„Ù…Ø¨Ù„Øº</th>
-                      <th style={{ padding: 10 }}>Ø§Ù„Ø­Ø§Ù„Ø©</th>
+                      <th style={{ padding: 10 }}>الشهر</th>
+                      <th style={{ padding: 10 }}>المبلغ</th>
+                      <th style={{ padding: 10 }}>الحالة</th>
                     </tr>
                   </thead>
 
@@ -177,17 +235,23 @@ export default function MemberPage() {
                     {payments.map((payment) => (
                       <tr key={payment.id}>
                         <td style={{ padding: 10 }}>
-                          {payment.payment_month}
+                          {formatMonth(payment.payment_month)}
                         </td>
 
                         <td style={{ padding: 10 }}>
-                          {payment.amount} â‚¬
+                          {euro(Number(payment.amount))}
                         </td>
 
-                        <td style={{ padding: 10 }}>
+                        <td
+                          style={{
+                            padding: 10,
+                            color: payment.is_paid ? "#166534" : "#991b1b",
+                            fontWeight: 700,
+                          }}
+                        >
                           {payment.is_paid
-                            ? "ØªÙ… ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø¯ÙØ¹"
-                            : "Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„Ø¯ÙØ¹"}
+                            ? "تم تأكيد الدفع"
+                            : "بانتظار الدفع"}
                         </td>
                       </tr>
                     ))}
@@ -202,14 +266,17 @@ export default function MemberPage() {
             style={{
               marginTop: 25,
               padding: 12,
+              border: "none",
+              borderRadius: 8,
+              background: "#202124",
+              color: "#ffffff",
               cursor: "pointer",
             }}
           >
-            ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬
+            تسجيل الخروج
           </button>
         </>
       )}
     </main>
   );
 }
-
