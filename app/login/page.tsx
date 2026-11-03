@@ -1,7 +1,7 @@
-
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
@@ -19,7 +19,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // تسجيل الدخول
       const { error: loginError } =
         await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -33,7 +32,6 @@ export default function LoginPage() {
         return;
       }
 
-      // التحقق من صلاحية الحساب
       const { data: roleData, error: roleError } =
         await supabase.rpc("current_user_role");
 
@@ -43,21 +41,18 @@ export default function LoginPage() {
         return;
       }
 
-      // توجيه المدير إلى لوحة الإدارة
       if (roleData === "admin") {
         router.replace("/");
         router.refresh();
         return;
       }
 
-      // توجيه العضو إلى صفحته الخاصة
       if (roleData === "member") {
         router.replace("/member");
         router.refresh();
         return;
       }
 
-      // رفض أي صلاحية غير معروفة
       await supabase.auth.signOut();
       setError("هذا الحساب لا يملك صلاحية دخول معتمدة.");
     } catch (err) {
@@ -71,11 +66,12 @@ export default function LoginPage() {
   return (
     <main
       dir="rtl"
+      lang="ar"
       style={{
         maxWidth: 400,
         margin: "80px auto",
         padding: 24,
-        fontFamily: "Arial",
+        fontFamily: "Arial, sans-serif",
       }}
     >
       <h1>تسجيل الدخول</h1>
@@ -113,13 +109,28 @@ export default function LoginPage() {
             display: "block",
             width: "100%",
             padding: 10,
-            margin: "8px 0 16px",
+            margin: "8px 0 8px",
             boxSizing: "border-box",
           }}
         />
 
+        <div style={{ textAlign: "left", marginBottom: 16 }}>
+          <Link
+            href="/forgot-password"
+            style={{
+              color: "#2563eb",
+              textDecoration: "underline",
+              fontSize: 14,
+            }}
+          >
+            نسيت كلمة المرور؟
+          </Link>
+        </div>
+
         {error && (
-          <p style={{ color: "red" }}>{error}</p>
+          <p style={{ color: "red" }} role="alert">
+            {error}
+          </p>
         )}
 
         <button
