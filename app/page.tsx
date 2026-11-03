@@ -596,6 +596,76 @@ async function generateMonthlyPayments() {
     }
   }
 
+  
+async function deleteMember(member: Member) {
+  const firstConfirmation = window.confirm(
+    ar
+      ? `هل أنت متأكد من حذف العضو ${member.name} نهائيًا؟ سيتم حذف حساب دخوله أيضًا، مع الاحتفاظ بسجلات الدفعات.`
+      : `Mitglied ${member.name} endgültig löschen? Das Login-Konto wird ebenfalls gelöscht. Zahlungshistorie bleibt erhalten.`
+  );
+
+  if (!firstConfirmation) return;
+
+  const secondConfirmation = window.prompt(
+    ar
+      ? 'للتأكيد النهائي، اكتب DELETE'
+      : 'Zur endgültigen Bestätigung DELETE eingeben'
+  );
+
+  if (secondConfirmation !== "DELETE") {
+    setMessage(
+      ar ? "تم إلغاء عملية الحذف." : "Löschvorgang abgebrochen."
+    );
+    return;
+  }
+
+  setLoading(true);
+  setMessage("");
+
+  try {
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    if (sessionError || !sessionData.session) {
+      throw new Error(
+        ar ? "يرجى تسجيل الدخول أولاً." : "Bitte zuerst anmelden."
+      );
+    }
+
+    const response = await fetch("/api/admin/delete-member", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
+      body: JSON.stringify({ memberId: member.id }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "حدث خطأ أثناء الحذف.");
+    }
+
+    setMessage(
+      ar
+        ? `تم حذف العضو ${member.name} نهائيًا مع الاحتفاظ بسجلات الدفعات.`
+        : `Mitglied ${member.name} wurde endgültig gelöscht. Zahlungshistorie bleibt erhalten.`
+    );
+
+    await loadMembers();
+    await loadPayments();
+  } catch (error) {
+    setMessage(
+      error instanceof Error
+        ? error.message
+        : "حدث خطأ غير متوقع."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
 
   async function logout() {
     await supabase.auth.signOut();
@@ -890,6 +960,7 @@ async function generateMonthlyPayments() {
                 <th style={cellStyle}>{ar ? "الحالة" : "Status"}</th>
                 <th style={cellStyle}>{ar ? "الإجراء" : "Aktion"}</th>
 <th style={cellStyle}>{ar ? "حالة العضوية" : "Mitgliedsstatus"}</th>
+<th style={cellStyle}>{ar ? "الحذف النهائي" : "Endgültig löschen"}</th>
               </tr>
             </thead>
             <tbody>
@@ -957,13 +1028,23 @@ async function generateMonthlyPayments() {
                             : "Reaktivieren"}
                       </button>
                     </td>
+                                        <td style={cellStyle}>
+                      <button
+                        type="button"
+                        style={{ ...buttonStyle, background: colors.red }}
+                        disabled={loading}
+                        onClick={() => void deleteMember(member)}
+                      >
+                        {ar ? "حذف نهائي" : "Endgültig löschen"}
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
 
               {members.length === 0 && (
                 <tr>
-                  <td style={cellStyle} colSpan={6}>
+                  <td style={cellStyle} colSpan={7}>
                     {ar
                       ? "لا يوجد أعضاء حتى الآن."
                       : "Noch keine Mitglieder vorhanden."}
@@ -1158,4 +1239,4 @@ function SummaryCard({
       <strong style={{ fontSize: 22 }}>{value}</strong>
     </div>
   );
-}  
+} 
