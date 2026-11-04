@@ -1,5 +1,4 @@
-﻿
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -95,6 +94,17 @@ export default function MemberPage() {
     month: isArabic ? "الشهر" : "Monat",
     amount: isArabic ? "المبلغ" : "Betrag",
     status: isArabic ? "الحالة" : "Status",
+
+    financialSummary: isArabic ? "ملخصي المالي" : "Meine Finanzübersicht",
+    confirmedTotal: isArabic
+      ? "إجمالي المبالغ المؤكدة"
+      : "Bestätigte Zahlungen",
+    reportedTotal: isArabic
+      ? "بانتظار تأكيد الإدارة"
+      : "Bestätigung ausstehend",
+    unpaidTotal: isArabic
+      ? "المبالغ غير المدفوعة"
+      : "Noch nicht bezahlt",
 
     noPayments: isArabic
       ? "لا توجد دفعات مسجلة حتى الآن."
@@ -327,6 +337,47 @@ export default function MemberPage() {
     (payment) => payment.payment_month === currentMonth
   );
 
+  // حساب الملخص المالي من سجلات دفعات العضو
+  const confirmedTotal = payments
+    .filter((payment) => payment.is_paid)
+    .reduce((total, payment) => total + Number(payment.amount || 0), 0);
+
+  const reportedTotal = payments
+    .filter(
+      (payment) => !payment.is_paid && payment.member_reported
+    )
+    .reduce((total, payment) => total + Number(payment.amount || 0), 0);
+
+  const unpaidTotal = payments
+    .filter(
+      (payment) => !payment.is_paid && !payment.member_reported
+    )
+    .reduce((total, payment) => total + Number(payment.amount || 0), 0);
+
+  const summaryCards = [
+    {
+      title: t.confirmedTotal,
+      amount: confirmedTotal,
+      background: "#dcfce7",
+      border: "#86efac",
+      color: "#166534",
+    },
+    {
+      title: t.reportedTotal,
+      amount: reportedTotal,
+      background: "#eff6ff",
+      border: "#93c5fd",
+      color: "#1d4ed8",
+    },
+    {
+      title: t.unpaidTotal,
+      amount: unpaidTotal,
+      background: "#fee2e2",
+      border: "#fca5a5",
+      color: "#991b1b",
+    },
+  ];
+
   if (loading || !germanyDate) {
     return (
       <main
@@ -437,6 +488,63 @@ export default function MemberPage() {
                   {euro(Number(member.monthly_fee))}
                 </strong>
               </p>
+            </section>
+
+            {/* الملخص المالي */}
+            <section
+              style={{
+                border: "1px solid #d1d5db",
+                borderRadius: 12,
+                padding: 20,
+                marginBottom: 20,
+                background: "#ffffff",
+                color: "#000000",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+              }}
+            >
+              <h2 style={{ marginTop: 0 }}>
+                {t.financialSummary}
+              </h2>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(190px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {summaryCards.map((card) => (
+                  <div
+                    key={card.title}
+                    style={{
+                      padding: 16,
+                      borderRadius: 10,
+                      background: card.background,
+                      border: `1px solid ${card.border}`,
+                      color: card.color,
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: "0 0 12px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {card.title}
+                    </p>
+
+                    <strong
+                      style={{
+                        fontSize: 22,
+                        display: "block",
+                      }}
+                    >
+                      {euro(card.amount)}
+                    </strong>
+                  </div>
+                ))}
+              </div>
             </section>
 
             {currentPayment ? (
