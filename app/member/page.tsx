@@ -750,6 +750,96 @@ export default function MemberPage() {
               )}
             </section>
 
+            {/* معلومات التواصل مع إدارة الأعضاء */}
+            <section
+              aria-labelledby="member-support-title"
+              style={{
+                border: "1px solid #bfdbfe",
+                borderRadius: 12,
+                padding: 20,
+                marginTop: 20,
+                background: "#ffffff",
+                color: "#000000",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+              }}
+            >
+              <h2 id="member-support-title" style={{ marginTop: 0 }}>
+                {isArabic
+                  ? "التواصل مع إدارة الأعضاء"
+                  : "Kontakt zur Mitgliederverwaltung"}
+              </h2>
+
+              <p style={{ lineHeight: 1.8, color: "#374151" }}>
+                {isArabic
+                  ? "إذا كان لديك سؤال أو استفسار، يرجى التواصل مع إدارة الحساب عبر البريد الإلكتروني أو واتساب."
+                  : "Bei Fragen oder Anliegen wenden Sie sich bitte per E-Mail oder WhatsApp an die Kontoverwaltung."}
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                  marginTop: 16,
+                }}
+              >
+                {/* البريد الإلكتروني */}
+                <a
+                  href="mailto:info@am-telekommunikation.de"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                    padding: "12px 14px",
+                    border: "1px solid #dbeafe",
+                    borderRadius: 10,
+                    background: "#eff6ff",
+                    color: "#1d4ed8",
+                    textDecoration: "none",
+                    fontWeight: 700,
+                  }}
+                >
+                  <span aria-hidden="true" style={{ fontSize: 22 }}>
+                    ✉️
+                  </span>
+
+                  <span>
+                    {isArabic ? "البريد الإلكتروني:" : "E-Mail:"}{" "}
+                    info@am-telekommunikation.de
+                  </span>
+                </a>
+
+                {/* واتساب */}
+                <a
+                  href="https://wa.me/4915732277032"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                    padding: "12px 14px",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: 10,
+                    background: "#f0fdf4",
+                    color: "#15803d",
+                    textDecoration: "none",
+                    fontWeight: 700,
+                  }}
+                >
+                  <span aria-hidden="true" style={{ fontSize: 22 }}>
+                    💬
+                  </span>
+
+                  <span>
+                    WhatsApp: 015732277032
+                  </span>
+                </a>
+              </div>
+            </section>
+
             <button
               onClick={logout}
               style={{
