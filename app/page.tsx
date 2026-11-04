@@ -22,6 +22,10 @@ type Payment = {
   amount: number;
   is_paid: boolean;
   paid_at: string | null;
+  member_name: string | null;
+  member_email: string | null;
+  member_reported: boolean;
+  member_reported_at: string | null;
 };
 
 type Transaction = {
@@ -97,6 +101,10 @@ export default function HomePage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [monthlyFee, setMonthlyFee] = useState("250");
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+const [editName, setEditName] = useState("");
+const [editEmail, setEditEmail] = useState("");
+const [editMonthlyFee, setEditMonthlyFee] = useState("");
 
   const [transactionType, setTransactionType] =
     useState<"income" | "expense">("expense");
@@ -181,7 +189,7 @@ export default function HomePage() {
 
     const { data, error } = await supabase
       .from("monthly_payments")
-      .select("id, member_id, payment_month, amount, is_paid, paid_at")
+      .select("id, member_id, payment_month, amount, is_paid, paid_at, member_name, member_email, member_reported, member_reported_at")
       .eq("payment_month", monthDate(month));
 
     if (error) {
@@ -192,15 +200,19 @@ export default function HomePage() {
     }
 
     setPayments(
-      (data ?? []).map((row) => ({
-        id: Number(row.id),
-        member_id: row.member_id === null ? null : Number(row.member_id),
-        payment_month: row.payment_month,
-        amount: Number(row.amount ?? 0),
-        is_paid: Boolean(row.is_paid),
-        paid_at: row.paid_at ?? null,
-      }))
-    );
+  (data ?? []).map((row) => ({
+    id: Number(row.id),
+    member_id: row.member_id === null ? null : Number(row.member_id),
+    payment_month: row.payment_month,
+    amount: Number(row.amount ?? 0),
+    is_paid: Boolean(row.is_paid),
+    paid_at: row.paid_at ?? null,
+    member_name: row.member_name ?? null,
+    member_email: row.member_email ?? null,
+    member_reported: Boolean(row.member_reported),
+    member_reported_at: row.member_reported_at ?? null,
+  }))
+);
   }, [month, ar]);
 
   const loadTransactions = useCallback(async () => {
@@ -396,12 +408,58 @@ async function generateMonthlyPayments() {
   }
 }
 
-  async function togglePayment(member: Member) {
-    if (!member.is_active) {
-  alert(ar ? "هذا العضو موقوف." : "Dieses Mitglied ist deaktiviert.");
-  return;
-}
+  async function confirmReportedPayment(payment: Payment) {
+  if (payment.is_paid) return;
+
+  const confirmed = window.confirm(
+    ar
+      ? `هل تؤكد استلام مبلغ ${euro(payment.amount)} عن شهر ${payment.payment_month.slice(0, 7)}؟`
+      : `Zahlung über ${euro(payment.amount)} für ${payment.payment_month.slice(0, 7)} bestätigen?`
+  );
+
+  if (!confirmed) return;
+
+  setLoading(true);
   setMessage("");
+
+  const { data, error } = await supabase
+    .from("monthly_payments")
+    .update({
+      is_paid: true,
+      paid_at: new Date().toISOString(),
+    })
+    .eq("id", payment.id)
+    .eq("is_paid", false)
+    .eq("member_reported", true)
+    .select("id")
+    .maybeSingle();
+
+  setLoading(false);
+
+  if (error || !data) {
+    setMessage(
+      ar
+        ? "تعذر تأكيد الدفع. يرجى المحاولة مرة أخرى."
+        : "Zahlung konnte nicht bestätigt werden."
+    );
+    return;
+  }
+
+  setMessage(
+    ar ? "تم تأكيد الدفع بنجاح." : "Zahlung erfolgreich bestätigt."
+  );
+
+  await loadPayments();
+}
+
+async function togglePayment(member: Member) {
+  if (!member.is_active) {
+    alert(ar ? "هذا العضو موقوف." : "Dieses Mitglied ist deaktiviert.");
+    return;
+  }
+
+  setMessage("");
+
   const payment = payments.find((p) => p.member_id === member.id);
   const newPaidState = !payment?.is_paid;
 
@@ -413,7 +471,6 @@ async function generateMonthlyPayments() {
       .from("monthly_payments")
       .update({
         is_paid: newPaidState,
-        amount: member.monthlyFee,
         paid_at: newPaidState ? new Date().toISOString() : null,
       })
       .eq("id", payment.id);
@@ -597,6 +654,88 @@ async function generateMonthlyPayments() {
   }
 
   
+function startEditingMember(member: Member) {
+  setEditingMember(member);
+  setEditName(member.name);
+  setEditEmail(member.email);
+  setEditMonthlyFee(String(member.monthlyFee));
+  setMessage("");
+}
+
+async function saveMemberChanges() {
+  if (!editingMember) return;
+
+  const fee = Number(editMonthlyFee);
+
+  if (
+    !editName.trim() ||
+    !editEmail.trim() ||
+    !Number.isFinite(fee) ||
+    fee < 0
+  ) {
+    setMessage(
+      ar
+        ? "يرجى إدخال الاسم والبريد الإلكتروني وقيمة اشتراك صحيحة."
+        : "Bitte Name, E-Mail und einen gültigen Beitrag eingeben."
+    );
+    return;
+  }
+
+  setLoading(true);
+  setMessage("");
+
+  try {
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    if (sessionError || !sessionData.session) {
+      throw new Error(
+        ar ? "يرجى تسجيل الدخول أولاً." : "Bitte zuerst anmelden."
+      );
+    }
+
+    const response = await fetch("/api/admin/update-member", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
+      body: JSON.stringify({
+        memberId: editingMember.id,
+        name: editName.trim(),
+        email: editEmail.trim(),
+        monthlyFee: fee,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Update failed");
+    }
+
+    setMessage(
+      ar
+        ? "تم تحديث بيانات العضو بنجاح."
+        : "Mitgliedsdaten erfolgreich aktualisiert."
+    );
+
+    setEditingMember(null);
+    await loadMembers();
+  } catch (error) {
+    setMessage(
+      error instanceof Error
+        ? error.message
+        : ar
+          ? "تعذر تحديث بيانات العضو."
+          : "Mitgliedsdaten konnten nicht aktualisiert werden."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+  
 async function deleteMember(member: Member) {
   const firstConfirmation = window.confirm(
     ar
@@ -677,6 +816,9 @@ async function deleteMember(member: Member) {
       .filter((payment) => payment.is_paid)
       .map((payment) => payment.member_id)
   );
+  const reportedPayments = payments.filter(
+  (payment) => payment.member_reported && !payment.is_paid
+);
 
   const paidCount = members.filter((member) =>
     paidMemberIds.has(member.id)
@@ -932,6 +1074,84 @@ async function deleteMember(member: Member) {
         </form>
       </section>
 
+<section
+  style={{
+    marginTop: 32,
+    background: "#eff6ff",
+    padding: 18,
+    borderRadius: 12,
+    border: "1px solid #bfdbfe",
+  }}
+>
+  <h2>
+    {ar ? "إشعارات الدفع المعلقة" : "Gemeldete Zahlungen – ausstehend"}
+    {" "}({reportedPayments.length})
+  </h2>
+
+  {reportedPayments.length === 0 ? (
+    <p>
+      {ar
+        ? "لا توجد إشعارات دفع معلقة لهذا الشهر."
+        : "Keine offenen Zahlungsmeldungen für diesen Monat."}
+    </p>
+  ) : (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            <th style={cellStyle}>{ar ? "اسم العضو" : "Mitglied"}</th>
+            <th style={cellStyle}>Email</th>
+            <th style={cellStyle}>{ar ? "الشهر" : "Monat"}</th>
+            <th style={cellStyle}>{ar ? "المبلغ" : "Betrag"}</th>
+            <th style={cellStyle}>{ar ? "وقت الإبلاغ" : "Gemeldet am"}</th>
+            <th style={cellStyle}>{ar ? "الإجراء" : "Aktion"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reportedPayments.map((payment) => {
+            const member = members.find(
+              (m) => m.id === payment.member_id
+            );
+
+            const reportedAt = payment.member_reported_at
+              ? new Intl.DateTimeFormat(ar ? "ar" : "de-DE", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(payment.member_reported_at))
+              : "—";
+
+            return (
+              <tr key={payment.id}>
+                <td style={cellStyle}>
+                  {payment.member_name ?? member?.name ?? "—"}
+                </td>
+                <td style={cellStyle}>
+                  {payment.member_email ?? member?.email ?? "—"}
+                </td>
+                <td style={cellStyle}>
+                  {payment.payment_month.slice(0, 7)}
+                </td>
+                <td style={cellStyle}>{euro(payment.amount)}</td>
+                <td style={cellStyle}>{reportedAt}</td>
+                <td style={cellStyle}>
+                  <button
+                    type="button"
+                    style={{ ...buttonStyle, background: colors.green }}
+                    disabled={loading}
+                    onClick={() => void confirmReportedPayment(payment)}
+                  >
+                    {ar ? "تأكيد استلام الدفع" : "Zahlung bestätigen"}
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>
+
       <section
         style={{
           marginTop: 32,
@@ -957,6 +1177,7 @@ async function deleteMember(member: Member) {
                 <th style={cellStyle}>{ar ? "الاسم" : "Name"}</th>
                 <th style={cellStyle}>Email</th>
                 <th style={cellStyle}>{ar ? "الاشتراك" : "Beitrag"}</th>
+                <th style={cellStyle}>{ar ? "تعديل البيانات" : "Bearbeiten"}</th>
                 <th style={cellStyle}>{ar ? "الحالة" : "Status"}</th>
                 <th style={cellStyle}>{ar ? "الإجراء" : "Aktion"}</th>
 <th style={cellStyle}>{ar ? "حالة العضوية" : "Mitgliedsstatus"}</th>
@@ -972,6 +1193,18 @@ async function deleteMember(member: Member) {
                     <td style={cellStyle}>{member.name}</td>
                     <td style={cellStyle}>{member.email}</td>
                     <td style={cellStyle}>{euro(member.monthlyFee)}</td>
+                    
+<td style={cellStyle}>
+  <button
+    type="button"
+    style={{ ...buttonStyle, background: colors.blue }}
+    disabled={loading}
+    onClick={() => startEditingMember(member)}
+  >
+    {ar ? "تعديل" : "Bearbeiten"}
+  </button>
+</td>
+
                     <td
                       style={{
                         ...cellStyle,
@@ -1044,7 +1277,7 @@ async function deleteMember(member: Member) {
 
               {members.length === 0 && (
                 <tr>
-                  <td style={cellStyle} colSpan={7}>
+                  <td style={cellStyle} colSpan={8}>
                     {ar
                       ? "لا يوجد أعضاء حتى الآن."
                       : "Noch keine Mitglieder vorhanden."}
@@ -1055,6 +1288,87 @@ async function deleteMember(member: Member) {
           </table>
         </div>
       </section>
+
+
+{editingMember && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.55)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 16,
+      zIndex: 1000,
+    }}
+  >
+    <div
+      style={{
+        background: "#ffffff",
+        color: colors.dark,
+        padding: 24,
+        borderRadius: 12,
+        width: "100%",
+        maxWidth: 450,
+        boxSizing: "border-box",
+      }}
+    >
+      <h2>{ar ? "تعديل بيانات العضو" : "Mitglied bearbeiten"}</h2>
+
+      <label>
+        {ar ? "اسم العضو" : "Name"}
+        <input
+          style={{ ...inputStyle, marginTop: 6, marginBottom: 14 }}
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+        />
+      </label>
+
+      <label>
+        {ar ? "البريد الإلكتروني" : "E-Mail"}
+        <input
+          style={{ ...inputStyle, marginTop: 6, marginBottom: 14 }}
+          type="email"
+          value={editEmail}
+          onChange={(e) => setEditEmail(e.target.value)}
+        />
+      </label>
+
+      <label>
+        {ar ? "الاشتراك الشهري (€)" : "Monatsbeitrag (€)"}
+        <input
+          style={{ ...inputStyle, marginTop: 6, marginBottom: 20 }}
+          type="number"
+          min="0"
+          step="0.01"
+          value={editMonthlyFee}
+          onChange={(e) => setEditMonthlyFee(e.target.value)}
+        />
+      </label>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          style={{ ...buttonStyle, background: colors.green }}
+          disabled={loading}
+          onClick={() => void saveMemberChanges()}
+        >
+          {ar ? "حفظ التعديلات" : "Änderungen speichern"}
+        </button>
+
+        <button
+          type="button"
+          style={{ ...buttonStyle, background: colors.red }}
+          disabled={loading}
+          onClick={() => setEditingMember(null)}
+        >
+          {ar ? "إلغاء" : "Abbrechen"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <section
         style={{
@@ -1239,4 +1553,4 @@ function SummaryCard({
       <strong style={{ fontSize: 22 }}>{value}</strong>
     </div>
   );
-} 
+}
