@@ -96,6 +96,9 @@ export default function HomePage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [memberPaymentTotals, setMemberPaymentTotals] = useState<
+  Record<number, { paid: number; unconfirmed: number }>
+>({});
 
   const [month, setMonth] = useState("");
   const [name, setName] = useState("");
@@ -214,6 +217,42 @@ const [editMonthlyFee, setEditMonthlyFee] = useState("");
   }))
 );
   }, [month, ar]);
+  const loadMemberPaymentTotals = useCallback(async () => {
+  const { data, error } = await supabase
+    .from("monthly_payments")
+    .select("member_id, amount, is_paid, member_reported");
+
+  if (error) {
+    setMessage(
+      `${ar ? "خطأ في تحميل إجماليات الأعضاء" : "Fehler beim Laden der Mitgliedersummen"}: ${error.message}`
+    );
+    return;
+  }
+
+  const totals: Record<
+    number,
+    { paid: number; unconfirmed: number }
+  > = {};
+
+  for (const payment of data ?? []) {
+    if (payment.member_id === null) continue;
+
+    const memberId = Number(payment.member_id);
+    const amount = Number(payment.amount ?? 0);
+
+    if (!totals[memberId]) {
+      totals[memberId] = { paid: 0, unconfirmed: 0 };
+    }
+
+    if (payment.is_paid) {
+      totals[memberId].paid += amount;
+    } else if (payment.member_reported) {
+      totals[memberId].unconfirmed += amount;
+    }
+  }
+
+  setMemberPaymentTotals(totals);
+}, [ar]);
 
   const loadTransactions = useCallback(async () => {
     if (!month) return;
@@ -257,6 +296,10 @@ const [editMonthlyFee, setEditMonthlyFee] = useState("");
   useEffect(() => {
     if (!authChecking) void loadMembers();
   }, [authChecking, loadMembers]);
+
+  useEffect(() => {
+  if (!authChecking) void loadMemberPaymentTotals();
+}, [authChecking, loadMemberPaymentTotals]);
 
   useEffect(() => {
     if (authChecking || !month) return;
@@ -396,6 +439,7 @@ async function generateMonthlyPayments() {
     );
 
     await loadPayments();
+     await loadMemberPaymentTotals();
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
@@ -450,6 +494,7 @@ async function generateMonthlyPayments() {
   );
 
   await loadPayments();
+  await loadMemberPaymentTotals();
 }
 
 async function togglePayment(member: Member) {
@@ -509,7 +554,8 @@ async function togglePayment(member: Member) {
         : "Zahlungsbestätigung zurückgenommen."
   );
 
-  await loadPayments();
+    await loadPayments();
+  await loadMemberPaymentTotals();
 }
 
   async function addTransaction(event: React.FormEvent<HTMLFormElement>) {
@@ -1177,6 +1223,12 @@ async function deleteMember(member: Member) {
                 <th style={cellStyle}>{ar ? "الاسم" : "Name"}</th>
                 <th style={cellStyle}>Email</th>
                 <th style={cellStyle}>{ar ? "الاشتراك" : "Beitrag"}</th>
+                <th style={cellStyle}>
+  {ar ? "إجمالي المدفوع" : "Gesamt bezahlt"}
+</th>
+<th style={cellStyle}>
+  {ar ? "إجمالي غير المؤكد" : "Gesamt unbestätigt"}
+</th>
                 <th style={cellStyle}>{ar ? "تعديل البيانات" : "Bearbeiten"}</th>
                 <th style={cellStyle}>{ar ? "الحالة" : "Status"}</th>
                 <th style={cellStyle}>{ar ? "الإجراء" : "Aktion"}</th>
@@ -1193,6 +1245,27 @@ async function deleteMember(member: Member) {
                     <td style={cellStyle}>{member.name}</td>
                     <td style={cellStyle}>{member.email}</td>
                     <td style={cellStyle}>{euro(member.monthlyFee)}</td>
+                    <td
+  style={{
+    ...cellStyle,
+    color: "#166534",
+    background: "#dcfce7",
+    fontWeight: 700,
+  }}
+>
+  {euro(memberPaymentTotals[member.id]?.paid ?? 0)}
+</td>
+
+<td
+  style={{
+    ...cellStyle,
+    color: "#1d4ed8",
+    background: "#eff6ff",
+    fontWeight: 700,
+  }}
+>
+  {euro(memberPaymentTotals[member.id]?.unconfirmed ?? 0)}
+</td>
                     
 <td style={cellStyle}>
   <button
@@ -1277,7 +1350,7 @@ async function deleteMember(member: Member) {
 
               {members.length === 0 && (
                 <tr>
-                  <td style={cellStyle} colSpan={8}>
+                  <td style={cellStyle} colSpan={10}>
                     {ar
                       ? "لا يوجد أعضاء حتى الآن."
                       : "Noch keine Mitglieder vorhanden."}
