@@ -1,4 +1,5 @@
-﻿"use client";
+﻿
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -155,7 +156,6 @@ export default function MemberPage() {
 
     async function loadMemberData() {
       try {
-        // حساب التاريخ حسب توقيت ألمانيا بعد فتح الصفحة في المتصفح
         const parts = getGermanyDateParts();
 
         if (active) {
@@ -165,7 +165,6 @@ export default function MemberPage() {
           });
         }
 
-        // التحقق من تسجيل الدخول
         const {
           data: { user },
           error: authError,
@@ -176,7 +175,6 @@ export default function MemberPage() {
           return;
         }
 
-        // التحقق من صلاحية العضو
         const { data: role, error: roleError } =
           await supabase.rpc("current_user_role");
 
@@ -194,7 +192,6 @@ export default function MemberPage() {
           return;
         }
 
-        // تحميل بيانات العضو
         const { data: memberData, error: memberError } =
           await supabase
             .from("members")
@@ -220,7 +217,6 @@ export default function MemberPage() {
           return;
         }
 
-        // تحميل دفعات هذا العضو فقط
         const { data: paymentData, error: paymentError } =
           await supabase
             .from("monthly_payments")
@@ -262,7 +258,6 @@ export default function MemberPage() {
     };
   }, [router]);
 
-  // إبلاغ الإدارة عن دفع الشهر الحالي
   async function reportPayment() {
     if (reporting || !currentMonth) {
       return;
@@ -342,7 +337,7 @@ export default function MemberPage() {
           padding: 30,
           textAlign: "center",
           background: "#c9f2df",
-          color: "#202124",
+          color: "#000000",
           fontFamily: "Arial, sans-serif",
         }}
       >
@@ -362,7 +357,7 @@ export default function MemberPage() {
         margin: 0,
         padding: "30px 16px",
         fontFamily: "Arial, sans-serif",
-        color: "#202124",
+        color: "#000000",
         background: "#c9f2df",
       }}
     >
@@ -395,6 +390,7 @@ export default function MemberPage() {
               border: "1px solid #ccc",
               borderRadius: 8,
               background: "#ffffff",
+              color: "#000000",
               cursor: "pointer",
               fontWeight: 700,
             }}
@@ -419,7 +415,6 @@ export default function MemberPage() {
 
         {member && (
           <>
-            {/* بيانات العضو */}
             <section
               style={{
                 border: "1px solid #d1d5db",
@@ -427,6 +422,7 @@ export default function MemberPage() {
                 padding: 20,
                 marginBottom: 20,
                 background: "#ffffff",
+                color: "#000000",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
               }}
             >
@@ -443,13 +439,13 @@ export default function MemberPage() {
               </p>
             </section>
 
-            {/* حالة دفع الشهر الحالي */}
             {currentPayment ? (
               <section
                 style={{
                   borderRadius: 12,
                   padding: 20,
                   marginBottom: 20,
+                  color: "#000000",
                   background: currentPayment.is_paid
                     ? "#dcfce7"
                     : currentPayment.member_reported
@@ -552,20 +548,20 @@ export default function MemberPage() {
                   marginBottom: 20,
                   borderRadius: 10,
                   background: "#ffffff",
-                  color: "#374151",
+                  color: "#000000",
                 }}
               >
                 {t.noCurrentPayment}
               </section>
             )}
 
-            {/* سجل الدفعات */}
             <section
               style={{
                 border: "1px solid #d1d5db",
                 borderRadius: 12,
                 padding: 20,
                 background: "#ffffff",
+                color: "#000000",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
               }}
             >
@@ -580,6 +576,7 @@ export default function MemberPage() {
                       width: "100%",
                       borderCollapse: "collapse",
                       textAlign: isArabic ? "right" : "left",
+                      color: "#000000",
                     }}
                   >
                     <thead>
