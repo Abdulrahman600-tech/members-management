@@ -466,6 +466,36 @@ export default function MemberPage() {
 
         {member && (
           <>
+          {/* رسالة الترحيب الشخصية */}
+<section
+  style={{
+    background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
+    border: "1px solid #bfdbfe",
+    borderRadius: 14,
+    padding: 24,
+    marginBottom: 20,
+    color: "#1e3a8a",
+    boxShadow: "0 3px 10px rgba(0,0,0,0.04)",
+  }}
+>
+  <h2 style={{ marginTop: 0, marginBottom: 12 }}>
+    {isArabic
+      ? `مرحبًا بك، ${member.name}! 👋`
+      : `Herzlich willkommen, ${member.name}! 👋`}
+  </h2>
+
+  <p style={{ lineHeight: 1.9, margin: 0 }}>
+    {isArabic
+      ? "عزيزي العضو، يسعدنا وجودك معنا. يمكنك من خلال حسابك متابعة اشتراكاتك الشهرية والاطلاع على سجل مدفوعاتك وحالتها بكل سهولة وشفافية."
+      : "Schön, dass Sie bei uns sind! In Ihrem persönlichen Mitgliederbereich können Sie Ihre monatlichen Beiträge, Ihren Zahlungsverlauf und den aktuellen Zahlungsstatus jederzeit bequem und transparent einsehen."}
+  </p>
+
+  <p style={{ marginBottom: 0, marginTop: 12, fontWeight: 700 }}>
+    {isArabic
+      ? "شكرًا لثقتك بنا، ونتمنى لك تجربة مميزة معنا."
+      : "Vielen Dank für Ihr Vertrauen. Wir wünschen Ihnen eine angenehme Nutzung!"}
+  </p>
+</section>
             <section
               style={{
                 border: "1px solid #d1d5db",
